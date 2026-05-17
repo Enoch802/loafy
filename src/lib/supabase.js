@@ -11,7 +11,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
 })
 
-// ─── Debt Helper (recalculate from transactions, never drifts) ───────────────
+// ─── Debt Helper ──────────────────────────────────────────────────────────────
 
 async function recalculateDebt(customerId) {
   const { data: txs, error } = await supabase
@@ -32,7 +32,7 @@ async function recalculateDebt(customerId) {
   return totalDebt
 }
 
-// ─── Customers ───────────────────────────────────────────────────────────────
+// ─── Customers ────────────────────────────────────────────────────────────────
 
 export async function searchCustomers(query) {
   const { data, error } = await supabase
@@ -93,7 +93,6 @@ export async function getAllCustomers() {
 // ─── Transactions ─────────────────────────────────────────────────────────────
 
 export async function createTransaction(tx) {
-  // 1. Insert transaction
   const { data, error } = await supabase
     .from('transactions')
     .insert(tx)
@@ -101,12 +100,10 @@ export async function createTransaction(tx) {
     .single()
   if (error) throw error
 
-  // 2. Recalculate customer's total debt from ALL transactions (reliable)
   try {
     await recalculateDebt(tx.customer_id)
   } catch (err) {
     console.error('Debt recalculation failed:', err)
-    // Fallback: simple increment
     try {
       const { data: cust } = await supabase
         .from('customers')
@@ -234,40 +231,17 @@ export async function getProfile(userId) {
   return data
 }
 
-
-
-
 // ─── Deliverers ───────────────────────────────────────────────────────────────
-// Add these functions to the bottom of your existing src/lib/supabase.js file
 
 export async function getAllDeliverers() {
-  // Gets all profiles (deliverers who have registered)
-  // Also pulls their email from a join-friendly approach via transactions
+  // Pulls directly from profiles — shows all registered deliverers
+  // even if they haven't made any transactions yet
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .order('full_name')
   if (error) throw error
-
-  // Enrich with email from auth — we store email in transactions as deliverer_name
-  // but we can get unique deliverer emails from transactions table
-  const { data: txData } = await supabase
-    .from('transactions')
-    .select('deliverer_id, deliverer_name')
-    .not('deliverer_id', 'is', null)
-
-  // Build a map of deliverer_id -> deliverer_name (email/name used at transaction time)
-  const nameMap = {}
-  txData?.forEach(tx => {
-    if (tx.deliverer_id && !nameMap[tx.deliverer_id]) {
-      nameMap[tx.deliverer_id] = tx.deliverer_name
-    }
-  })
-
-  return data.map(p => ({
-    ...p,
-    email: nameMap[p.id] || null,
-  }))
+  return data
 }
 
 export async function getDelivererProfile(delivererId) {
@@ -281,18 +255,14 @@ export async function getDelivererProfile(delivererId) {
 }
 
 export async function getDelivererStats(delivererId, fromDate, toDate) {
-  // If only one date passed, treat it as a single day
   const endDate = toDate || fromDate
-
   const { data, error } = await supabase
     .from('transactions')
     .select('total_amount, amount_paid, debt_for_visit')
     .eq('deliverer_id', delivererId)
     .gte('date', fromDate)
     .lte('date', endDate)
-
   if (error) throw error
-
   return {
     visits: data.length,
     sold: data.reduce((s, t) => s + Number(t.total_amount), 0),
