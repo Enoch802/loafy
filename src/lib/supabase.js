@@ -233,3 +233,82 @@ export async function getProfile(userId) {
   const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
   return data
 }
+
+
+
+
+// ─── Deliverers ───────────────────────────────────────────────────────────────
+// Add these functions to the bottom of your existing src/lib/supabase.js file
+
+export async function getAllDeliverers() {
+  // Gets all profiles (deliverers who have registered)
+  // Also pulls their email from a join-friendly approach via transactions
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('full_name')
+  if (error) throw error
+
+  // Enrich with email from auth — we store email in transactions as deliverer_name
+  // but we can get unique deliverer emails from transactions table
+  const { data: txData } = await supabase
+    .from('transactions')
+    .select('deliverer_id, deliverer_name')
+    .not('deliverer_id', 'is', null)
+
+  // Build a map of deliverer_id -> deliverer_name (email/name used at transaction time)
+  const nameMap = {}
+  txData?.forEach(tx => {
+    if (tx.deliverer_id && !nameMap[tx.deliverer_id]) {
+      nameMap[tx.deliverer_id] = tx.deliverer_name
+    }
+  })
+
+  return data.map(p => ({
+    ...p,
+    email: nameMap[p.id] || null,
+  }))
+}
+
+export async function getDelivererProfile(delivererId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', delivererId)
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function getDelivererStats(delivererId, fromDate, toDate) {
+  // If only one date passed, treat it as a single day
+  const endDate = toDate || fromDate
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('total_amount, amount_paid, debt_for_visit')
+    .eq('deliverer_id', delivererId)
+    .gte('date', fromDate)
+    .lte('date', endDate)
+
+  if (error) throw error
+
+  return {
+    visits: data.length,
+    sold: data.reduce((s, t) => s + Number(t.total_amount), 0),
+    collected: data.reduce((s, t) => s + Number(t.amount_paid), 0),
+    debt: data.reduce((s, t) => s + Number(t.debt_for_visit), 0),
+  }
+}
+
+export async function getTransactionsByDelivererRange(delivererId, fromDate, toDate) {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*, customers(name, customer_code)')
+    .eq('deliverer_id', delivererId)
+    .gte('date', fromDate)
+    .lte('date', toDate || fromDate)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data
+}
