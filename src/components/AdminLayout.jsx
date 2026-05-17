@@ -4,6 +4,7 @@ import { useState } from 'react'
 const navItems = [
   { path: '/admin/dashboard', label: 'Dashboard', emoji: '📊' },
   { path: '/admin/customers', label: 'Customers', emoji: '👥' },
+  { path: '/admin/deliverers', label: 'Deliverers', emoji: '🚚' },
   { path: '/admin/financials', label: 'Financials', emoji: '💰' },
   { path: '/admin/insights', label: 'AI Insights', emoji: '🤖' },
   { path: '/admin/notifications', label: 'Notifications', emoji: '🔔' },
@@ -33,7 +34,7 @@ export default function AdminLayout({ children, title, bakeryName }) {
           <Link
             key={item.path}
             to={item.path}
-            className={`admin-nav-item${location.pathname === item.path ? ' active' : ''}`}
+            className={`admin-nav-item${location.pathname.startsWith(item.path) ? ' active' : ''}`}
           >
             <span style={{ fontSize: '1rem' }}>{item.emoji}</span>
             {item.label}
@@ -75,8 +76,8 @@ export default function AdminLayout({ children, title, bakeryName }) {
                 display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap',
                 padding: '0.45rem 0.9rem', borderRadius: 'var(--radius-full)',
                 fontSize: '0.8125rem', fontWeight: 600, textDecoration: 'none',
-                background: location.pathname === item.path ? 'var(--brown-600)' : 'var(--cream-200)',
-                color: location.pathname === item.path ? 'white' : 'var(--brown-500)',
+                background: location.pathname.startsWith(item.path) ? 'var(--brown-600)' : 'var(--cream-200)',
+                color: location.pathname.startsWith(item.path) ? 'white' : 'var(--brown-500)',
                 transition: 'all 0.2s',
                 flexShrink: 0,
               }}
