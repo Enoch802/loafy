@@ -24,6 +24,8 @@ import AdminCustomerDetail from './pages/admin/AdminCustomerDetail'
 import AdminFinancials from './pages/admin/AdminFinancials'
 import AdminInsights from './pages/admin/AdminInsights'
 import AdminNotifications from './pages/admin/AdminNotifications'
+import AdminDeliverers from './pages/admin/AdminDeliverers'
+import AdminDelivererDetail from './pages/admin/AdminDelivererDetail'
 
 function LoadingScreen() {
   return (
@@ -97,6 +99,8 @@ export default function App() {
       <Route path="/admin/financials" element={<AdminFinancials />} />
       <Route path="/admin/insights" element={<AdminInsights />} />
       <Route path="/admin/notifications" element={<AdminNotifications />} />
+      <Route path="/admin/deliverers" element={<AdminDeliverers />} />
+      <Route path="/admin/deliverers/:id" element={<AdminDelivererDetail />} />
 
       {/* Deliverer */}
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
